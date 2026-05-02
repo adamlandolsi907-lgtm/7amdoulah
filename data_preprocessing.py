@@ -14,6 +14,13 @@ from datetime import datetime, timezone
 import numpy as np
 import paho.mqtt.client as mqtt
 
+Adafruit_DHT = None
+if sys.platform.startswith("linux"):
+    try:
+        import Adafruit_DHT
+    except ImportError:
+        Adafruit_DHT = None
+
 try:
     import adafruit_dht
     import board
@@ -119,7 +126,7 @@ def process_pipeline(sensor_data):
     flow_s = _ma_flow.update(aligned["flow_raw"])
 
     # Gas correction with temperature and humidity compensation
-    a, b = 0.01, 0.005
+    a, b = 0.015, 0.006
     denom = 1 + a * (temp_f - 25) + b * (humidity_f - 50)
     gas_corrected = gas_f / denom if denom != 0 else gas_f
 
@@ -242,6 +249,18 @@ def read_dht11_circuitpython(device, retries=3, delay=0.5):
     return None, None
 
 
+def read_dht11_adafruit(pin, retries=3, delay=0.5):
+    if Adafruit_DHT is None:
+        return None, None
+
+    for _ in range(retries):
+        humidity, temperature = Adafruit_DHT.read_retry(Adafruit_DHT.DHT11, pin)
+        if humidity is not None and temperature is not None:
+            return float(temperature), float(humidity)
+        time.sleep(delay)
+    return None, None
+
+
 def read_gas_simulated():
     gas = round(random.uniform(GAS_RANGE[0], GAS_RANGE[1]), 2)
     if random.random() < 0.02:
@@ -260,6 +279,8 @@ def read_sensors(args, gas_device, dht_device, flow_counter):
     humidity = None
     if not args.gas_only:
         temperature, humidity = read_dht11_circuitpython(dht_device)
+        if temperature is None or humidity is None:
+            temperature, humidity = read_dht11_adafruit(args.gpio_pin)
         if temperature is None or humidity is None and args.simulate:
             temperature = round(random.uniform(15.0, 35.0), 2)
             humidity = round(random.uniform(30.0, 70.0), 2)
