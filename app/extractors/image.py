@@ -35,7 +35,7 @@ from app.models.schemas import (
 load_dotenv()
 
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llava")
+OLLAMA_MODEL = os.environ.get("OLLAMA_VISION_MODEL", os.environ.get("OLLAMA_MODEL", "llava"))
 
 
 # ── Image preprocessing ───────────────────────────────────────────────────────

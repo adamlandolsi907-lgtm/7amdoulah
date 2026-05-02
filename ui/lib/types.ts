@@ -10,6 +10,7 @@ export type ZoneType = "alpha" | "beta" | "gamma" | "global";
 export type EnergyType =
   | "electricity"
   | "gas"
+  | "natural_gas"
   | "steam"
   | "hot_water"
   | "chilled_water"
@@ -19,6 +20,8 @@ export type AnomalyType = "RECONCILIATION" | "SPIKE" | "DROPOUT" | "DRIFT";
 
 export type ExtractionMethod =
   | "claude_vision"
+  | "ollama_vision"
+  | "ollama_text"
   | "pdfplumber"
   | "pandas_excel"
   | "manual";

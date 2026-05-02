@@ -20,7 +20,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.db import store
@@ -53,6 +54,20 @@ app = FastAPI(
     ),
     version="1.0.0",
     lifespan=lifespan,
+)
+
+_cors_origins_raw = os.environ.get(
+    "CORS_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000",
+)
+_cors_origins = [o.strip() for o in _cors_origins_raw.split(",") if o.strip()]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -96,6 +111,8 @@ def extract(req: ExtractRequest):
 
     try:
         records = _run_extractor(tmp_path, req.file_type.lower())
+    except Exception as exc:
+        raise HTTPException(400, f"Extraction failed for '{req.filename}': {exc}")
     finally:
         os.unlink(tmp_path)
 
@@ -116,6 +133,70 @@ def extract(req: ExtractRequest):
     return {"extracted": len(results), "records": results}
 
 
+@app.post("/ingest", tags=["pipeline"])
+def ingest(file: UploadFile = File(...)):
+    """
+    Upload a file, auto-detect its type, run the proper extractor,
+    persist to DB, and upsert into Qdrant.
+    """
+    filename = file.filename or "upload"
+    file_type = _detect_file_type(filename)
+    if not file_type:
+        raise HTTPException(400, f"Unsupported file type for: '{filename}'")
+
+    with tempfile.NamedTemporaryFile(suffix=f".{file_type}", delete=False) as tf:
+        tf.write(file.file.read())
+        tmp_path = tf.name
+
+    try:
+        records = _run_extractor(tmp_path, file_type)
+    except Exception as exc:
+        raise HTTPException(400, f"Extraction failed for '{filename}': {exc}")
+    finally:
+        os.unlink(tmp_path)
+
+    results = []
+    for rec in records:
+        if isinstance(rec, EnergyRecord):
+            normalize_record(rec)
+            store.upsert_energy_record(rec, _DB)
+            estimates = co2_engine.estimate_co2(rec)
+            store.upsert_co2_estimates(estimates, _DB)
+        else:
+            store.upsert_energy_record(rec, _DB)
+            estimates = co2_engine.estimate_co2(rec)
+            store.upsert_co2_estimates(estimates, _DB)
+        results.append(rec.model_dump())
+
+    from app.pipeline.qdrant_ingest import upsert_records_to_qdrant
+    qdrant_result = upsert_records_to_qdrant(records)
+
+    return {
+        "extracted": len(results),
+        "records": results,
+        "qdrant": qdrant_result,
+    }
+
+
+@app.get("/qdrant/documents", tags=["qdrant"])
+def qdrant_documents(limit: int = Query(100, ge=1, le=500)):
+    """Return recent documents from Qdrant payloads."""
+    from app.pipeline.qdrant_ingest import list_recent_documents
+    docs = list_recent_documents(limit=limit)
+    return {"count": len(docs), "records": docs}
+
+
+@app.get("/qdrant/similar", tags=["qdrant"])
+def qdrant_similar(
+    document_id: str = Query(..., min_length=1),
+    limit: int = Query(5, ge=1, le=20),
+):
+    """Return top semantic neighbors for a document from Qdrant."""
+    from app.pipeline.qdrant_ingest import list_similar_documents
+    docs = list_similar_documents(document_id=document_id, limit=limit)
+    return {"count": len(docs), "records": docs}
+
+
 def _run_extractor(path: str, file_type: str) -> list:
     if file_type in ("jpeg", "jpg"):
         from app.extractors.image import extract_image
@@ -127,6 +208,17 @@ def _run_extractor(path: str, file_type: str) -> list:
         from app.extractors.excel import extract_excel
         return extract_excel(path)
     raise HTTPException(400, f"Unsupported file_type: '{file_type}'")
+
+
+def _detect_file_type(filename: str) -> str | None:
+    suffix = Path(filename).suffix.lower().lstrip(".")
+    if suffix in {"jpeg", "jpg"}:
+        return "jpeg"
+    if suffix == "pdf":
+        return "pdf"
+    if suffix in {"xlsx", "xls"}:
+        return "xlsx"
+    return None
 
 
 # ── Unified energy records ────────────────────────────────────────────────────

@@ -30,6 +30,9 @@ interface WorkspaceState {
   setMode: (mode: WorkspaceMode) => void;
   setSelectedNode: (id: string | null) => void;
   setFilter: (key: "filterDocType" | "filterDate" | "filterAnomaly", value: string | boolean) => void;
+  addDocuments: (docs: EnergyDocument[]) => void;
+  setDocuments: (docs: EnergyDocument[]) => void;
+  setGraph: (graph: EnergyGraph) => void;
 
   openViewer: (doc: EnergyDocument) => void;
   closeViewer: (id: string) => void;
@@ -41,7 +44,7 @@ interface WorkspaceState {
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   mode: "pool",
-  documents: MOCK_DOCUMENTS,
+  documents: [],
   graph: MOCK_GRAPH,
   analysis: MOCK_ANALYSIS,
   kpis: MOCK_KPIS,
@@ -54,6 +57,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   setMode: (mode) => set({ mode }),
   setSelectedNode: (id) => set({ selectedNodeId: id }),
   setFilter: (key, value) => set({ [key]: value } as Partial<WorkspaceState>),
+  addDocuments: (docs) =>
+    set((s) => ({ documents: [...docs, ...s.documents] })),
+  setDocuments: (docs) => set({ documents: docs }),
+  setGraph: (graph) => set({ graph }),
 
   openViewer: (doc) => {
     const existing = get().activeViewers.find((v) => v.documentId === doc.id);

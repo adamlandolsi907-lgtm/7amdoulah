@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   Truck,
   Activity,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { EnergyGraph as EnergyGraphType, EnergyNode, EnergyEdge } from "@/lib/types";
@@ -54,7 +55,10 @@ const EDGE_STYLES: Record<string, { stroke: string; strokeDasharray?: string }> 
 };
 
 function EnergyNodeComponent({ data }: NodeProps) {
-  const node = data as unknown as EnergyNode & { config: typeof NODE_CONFIG["site"] };
+  const node = data as unknown as EnergyNode & {
+    config: typeof NODE_CONFIG["site"];
+    onExpandDocument?: (documentId: string) => void;
+  };
   const cfg = node.config ?? NODE_CONFIG["site"];
   const isAnomaly = node.anomaly;
   const severity = node.severity;
@@ -78,6 +82,19 @@ function EnergyNodeComponent({ data }: NodeProps) {
       <div className="flex items-center gap-2">
         <span className={cn("shrink-0", cfg.text)}>{cfg.icon}</span>
         <span className={cn("truncate text-xs font-semibold", cfg.text)}>{node.label}</span>
+        {node.type === "document" && node.documentId && node.onExpandDocument && (
+          <button
+            className="ml-auto inline-flex h-5 w-5 items-center justify-center rounded border border-gray-600 bg-gray-800/80 text-green-300 hover:bg-gray-700"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              node.onExpandDocument?.(node.documentId as string);
+            }}
+            title="Show 5 semantically similar documents"
+          >
+            <Plus className="h-3 w-3" />
+          </button>
+        )}
         {isAnomaly && severity === "critical" && (
           <AlertTriangle className="h-3 w-3 shrink-0 text-red-400" />
         )}
@@ -98,18 +115,23 @@ const nodeTypes = { energy: EnergyNodeComponent };
 interface EnergyGraphProps {
   graph: EnergyGraphType;
   onNodeClick?: (node: EnergyNode) => void;
+  onExpandDocument?: (documentId: string) => void;
 }
 
-export function EnergyGraphView({ graph, onNodeClick }: EnergyGraphProps) {
+export function EnergyGraphView({ graph, onNodeClick, onExpandDocument }: EnergyGraphProps) {
   const rfNodes: Node[] = useMemo(
     () =>
       graph.nodes.map((n) => ({
         id: n.id,
         type: "energy",
         position: n.position,
-        data: { ...n, config: NODE_CONFIG[n.type] ?? NODE_CONFIG["site"] },
+        data: {
+          ...n,
+          config: NODE_CONFIG[n.type] ?? NODE_CONFIG["site"],
+          onExpandDocument,
+        },
       })),
-    [graph.nodes]
+    [graph.nodes, onExpandDocument]
   );
 
   const rfEdges: Edge[] = useMemo(

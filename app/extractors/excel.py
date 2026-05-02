@@ -174,7 +174,10 @@ def extract_excel(excel_path: str) -> list[EnergyRecord]:
     Returns one EnergyRecord per energy stream with non-zero delta.
     """
     source_file = Path(excel_path).name
-    wb = openpyxl.load_workbook(excel_path, data_only=True)
+    try:
+        wb = openpyxl.load_workbook(excel_path, data_only=True)
+    except Exception as exc:
+        raise ValueError(f"Invalid Excel file: {exc}") from exc
 
     # Try each sheet; prefer BILAN TOTAL
     ws = None

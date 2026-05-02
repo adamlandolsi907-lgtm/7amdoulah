@@ -68,7 +68,7 @@ class StegBillRecord(BaseModel):
     site: Optional[str] = None
     district: Optional[str] = None
     extraction_confidence: float = 1.0
-    extraction_method: str = "claude_vision"
+    extraction_method: str = "ollama_vision"
 
 
 class StegMeterReadingRecord(BaseModel):
@@ -91,7 +91,7 @@ class StegMeterReadingRecord(BaseModel):
     max_demand_p_kva: Optional[float] = None
     max_demand_s_kva: Optional[float] = None
     extraction_confidence: float = 1.0
-    extraction_method: str = "claude_vision"
+    extraction_method: str = "ollama_vision"
 
 
 # ── CO2 output ────────────────────────────────────────────────────────────────

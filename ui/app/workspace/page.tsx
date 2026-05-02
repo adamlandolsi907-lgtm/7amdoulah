@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Database,
   Network,
@@ -17,6 +17,9 @@ import { Badge } from "@/components/ui/badge";
 import { FloatingWindow } from "@/components/viewers/FloatingWindow";
 import { InsightPanel } from "@/components/viewers/InsightPanel";
 import { DocumentPool, EnergyGraphView, AnalysisPanel } from "@/components/workspace";
+import { fetchQdrantDocuments, uploadDocument } from "@/lib/api";
+import { buildGraphFromDocuments } from "@/lib/graph-from-docs";
+import { recordToEnergyDocument } from "@/lib/mappers";
 import { useWorkspaceStore, type WorkspaceMode } from "@/lib/stores";
 import { cn } from "@/lib/utils";
 
@@ -81,9 +84,31 @@ export default function WorkspacePage() {
     activeViewers,
     openViewer, closeViewer, minimizeViewer, restoreViewer,
     updateViewerPosition, updateViewerSize,
+    addDocuments,
+    setDocuments,
+    setGraph,
   } = useWorkspaceStore();
 
   const anomalyCount = documents.filter((d) => d.anomalies.length > 0).length;
+
+  useEffect(() => {
+    let mounted = true;
+    fetchQdrantDocuments(200)
+      .then((result) => {
+        if (!mounted) return;
+        const docs = (result.records ?? []).map(recordToEnergyDocument);
+        setDocuments(docs);
+        setGraph(buildGraphFromDocuments(docs));
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setDocuments([]);
+        setGraph(buildGraphFromDocuments([]));
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [setDocuments, setGraph]);
 
   return (
     <TooltipProvider>
@@ -131,6 +156,15 @@ export default function WorkspacePage() {
             <DocumentPool
               documents={documents}
               onOpenDocument={openViewer}
+              onUpload={async (file) => {
+                const result = await uploadDocument(file);
+                const newDocs = (result.records ?? []).map(recordToEnergyDocument);
+                if (newDocs.length) {
+                  const merged = [...newDocs, ...documents];
+                  addDocuments(newDocs);
+                  setGraph(buildGraphFromDocuments(merged));
+                }
+              }}
             />
           )}
 

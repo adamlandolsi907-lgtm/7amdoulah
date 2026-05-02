@@ -35,7 +35,9 @@ export function getDocumentTypeLabel(type: string): string {
     steg_meter_reading: "Relevé Compteur",
     excel_report: "Rapport Mensuel",
     pdf_report: "Rapport PDF",
+    pdf_invoice: "Facture PDF",
     image_invoice: "Facture (Photo)",
+    unknown: "Document",
   };
   return labels[type] ?? type;
 }
@@ -44,6 +46,7 @@ export function getEnergyTypeLabel(type: string): string {
   const labels: Record<string, string> = {
     electricity: "Électricité",
     gas: "Gaz Naturel",
+    natural_gas: "Gaz Naturel",
     steam: "Vapeur",
     hot_water: "Eau Chaude",
     chilled_water: "Eau Glacée",

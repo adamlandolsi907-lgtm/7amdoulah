@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   FileText,
   Zap,
@@ -34,6 +34,7 @@ const DOC_ICONS: Record<string, React.ReactNode> = {
   excel_report: <TableProperties className="h-5 w-5 text-emerald-400" />,
   pdf_report: <FileScan className="h-5 w-5 text-blue-400" />,
   image_invoice: <FileImage className="h-5 w-5 text-amber-400" />,
+  unknown: <FileText className="h-5 w-5 text-gray-400" />,
 };
 
 const DOC_COLORS: Record<string, string> = {
@@ -42,11 +43,13 @@ const DOC_COLORS: Record<string, string> = {
   excel_report: "border-emerald-900/40 hover:border-emerald-700/60 bg-emerald-950/10",
   pdf_report: "border-blue-900/40 hover:border-blue-700/60 bg-blue-950/10",
   image_invoice: "border-amber-900/40 hover:border-amber-700/60 bg-amber-950/10",
+  unknown: "border-gray-800 hover:border-gray-600 bg-gray-900/20",
 };
 
 interface DocumentPoolProps {
   documents: EnergyDocument[];
   onOpenDocument: (doc: EnergyDocument) => void;
+  onUpload: (file: File) => Promise<void>;
 }
 
 function DocCard({ doc, onOpen }: { doc: EnergyDocument; onOpen: () => void }) {
@@ -142,9 +145,11 @@ function StatsBar({ documents }: { documents: EnergyDocument[] }) {
   );
 }
 
-export function DocumentPool({ documents, onOpenDocument }: DocumentPoolProps) {
+export function DocumentPool({ documents, onOpenDocument, onUpload }: DocumentPoolProps) {
   const [filterType, setFilterType] = useState("all");
   const [filterAnomaly, setFilterAnomaly] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const filtered = documents.filter((d) => {
     if (filterType !== "all" && d.doc_type !== filterType) return false;
@@ -156,6 +161,23 @@ export function DocumentPool({ documents, onOpenDocument }: DocumentPoolProps) {
 
   return (
     <div className="flex h-full flex-col gap-0">
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept=".jpg,.jpeg,.pdf,.xlsx,.xls"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          setIsUploading(true);
+          try {
+            await onUpload(file);
+          } finally {
+            setIsUploading(false);
+            e.target.value = "";
+          }
+        }}
+      />
       {/* Top bar */}
       <div className="border-b border-gray-800 bg-gray-900/80 px-6 py-4 backdrop-blur">
         <div className="flex flex-wrap items-center justify-between gap-3">

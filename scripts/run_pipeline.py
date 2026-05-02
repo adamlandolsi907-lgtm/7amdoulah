@@ -2,7 +2,7 @@
 Full pipeline runner — processes all data files and populates the DB.
 
 Usage:
-    python -m scripts.run_pipeline [--data-dir data/]
+    python -m scripts.run_pipeline [--data-dir data/] [--qdrant]
 """
 
 import argparse
@@ -21,7 +21,7 @@ _DEFAULT_DATA = Path(__file__).parent.parent / "data"
 _DEFAULT_DB   = _DEFAULT_DATA / "pipeline.db"
 
 
-def run(data_dir: Path, db_path: str) -> None:
+def run(data_dir: Path, db_path: str, upsert_qdrant: bool) -> None:
     print(f"[init] DB: {db_path}")
     init_db(db_path)
 
@@ -87,9 +87,19 @@ def run(data_dir: Path, db_path: str) -> None:
 
     print(f"\n[done] Pipeline complete. {len(all_records)} total records in {db_path}")
 
+    if upsert_qdrant:
+        print("\n[Qdrant] Upserting extracted records ...")
+        try:
+            from app.pipeline.qdrant_ingest import upsert_records_to_qdrant
+            result = upsert_records_to_qdrant(all_records)
+            print(f"  upserted {result['upserted']} points into {result['collection']}")
+        except Exception as exc:
+            print(f"  WARN: Qdrant upsert failed — {exc}")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="NRTF energy pipeline runner")
     parser.add_argument("--data-dir", default=str(_DEFAULT_DATA))
+    parser.add_argument("--qdrant", action="store_true", help="upsert extracted records to Qdrant")
     args = parser.parse_args()
-    run(Path(args.data_dir), str(_DEFAULT_DB))
+    run(Path(args.data_dir), str(_DEFAULT_DB), args.qdrant)
