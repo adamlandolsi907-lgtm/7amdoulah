@@ -18,7 +18,7 @@ data/
         |
         v
 Extraction Layer
-  image.py  ->  Gemini 2.5 Flash (vision + CLAHE/deskew)
+  image.py  ->  Ollama vision (local) + CLAHE/deskew
   pdf.py    ->  pdfplumber + vision fallback
   excel.py  ->  openpyxl delta scan
         |
@@ -56,14 +56,14 @@ Storage: SQLite (data/pipeline.db) — no external database required.
 ### Prerequisites
 
 - Python 3.11+
-- Gemini API key (free tier — aistudio.google.com)
+- Ollama running locally (http://localhost:11434)
 
 ### Install
 
 ```bash
 pip install -r requirements.txt
 cp .env.example .env
-# Edit .env and set GEMINI_API_KEY=your_key_here
+# Edit .env and set OLLAMA_* and QDRANT_* values if needed
 ```
 
 ### Run the extraction pipeline
@@ -122,12 +122,22 @@ Sections:
 ## Run with Docker
 
 ```bash
-cp .env.example .env   # set GEMINI_API_KEY
+cp .env.example .env   # set OLLAMA_* and QDRANT_* if needed
 docker compose up --build
+```
+
+If this is your first run, pull the Ollama models (adjust names if you changed `.env`):
+
+```bash
+docker compose exec ollama ollama pull glm-ocr:q8_0
+docker compose exec ollama ollama pull nomic-embed-text:v1.5
 ```
 
 - API: http://localhost:8000/docs
 - Dashboard: http://localhost:8501
+- UI: http://localhost:3000
+- Qdrant: http://localhost:6333
+- Ollama: http://localhost:11434
 
 ---
 
@@ -145,7 +155,7 @@ pytest tests/test_anomaly.py tests/test_normalize.py tests/test_co2.py -v
 | test_co2.py              |  19   | none              |
 | test_anomaly.py          |  19   | none              |
 | test_excel_extractor.py  |   ?   | openpyxl          |
-| test_image_extractor.py  |   ?   | opencv, Gemini    |
+| test_image_extractor.py  |   ?   | opencv, Ollama    |
 | test_pdf_extractor.py    |   ?   | pdfplumber, fitz  |
 
 ---
@@ -183,7 +193,7 @@ nrtf_claude/
 |   |-- main.py            FastAPI application (9 routes + Swagger)
 |   |-- dashboard.py       Streamlit dashboard
 |   |-- extractors/
-|   |   |-- image.py       Gemini vision + CLAHE/deskew preprocessing
+|   |   |-- image.py       Ollama vision + CLAHE/deskew preprocessing
 |   |   |-- pdf.py         pdfplumber + vision fallback
 |   |   `-- excel.py       openpyxl delta scan (BILAN TOTAL sheets)
 |   |-- pipeline/

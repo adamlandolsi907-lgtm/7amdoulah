@@ -17,10 +17,43 @@ The app runs fully without a backend — all data is loaded from `lib/mock-data.
 
 ---
 
-## What This Is
+## Docker (Full Stack)
 
-A document intelligence workstation heavily inspired by **Selecao-QDesign** (located at `../Selecao-QDesign/`), adapted from a biological research platform to an industrial energy audit tool. The same visual language (dark green theme, floating windows, three-mode workspace, @xyflow graph) is repurposed for STEG invoices, Excel energy reports, and the ADWYA factory knowledge graph.
+From the repo root:
 
+```bash
+cp .env.example .env   # set OLLAMA_* and QDRANT_* if needed
+docker compose up --build
+```
+
+- UI: http://localhost:3000
+- API: http://localhost:8000/docs
+- Qdrant: http://localhost:6333
+
+---
+
+## Local Qdrant (Docker)
+
+If you want to run Qdrant locally for the pipeline or future backend wiring, you can use Docker:
+
+```bash
+docker pull qdrant/qdrant
+docker run -d --name qdrant \
+  -p 6333:6333 -p 6334:6334 \
+  -v qdrant_storage:/qdrant/storage \
+  qdrant/qdrant
+```
+
+Qdrant will be available at http://localhost:6333.
+
+To stop and remove the container:
+
+```bash
+docker stop qdrant
+docker rm qdrant
+```
+
+---
 **Tech stack** (identical to QDesign):
 
 | Layer | Choice |

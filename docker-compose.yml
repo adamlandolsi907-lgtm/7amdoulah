@@ -8,13 +8,24 @@ services:
     volumes:
       - ./data:/app/data
     environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-glm-ocr:q8_0}
+      - OLLAMA_VISION_MODEL=${OLLAMA_VISION_MODEL:-glm-ocr:q8_0}
+      - OLLAMA_EMBED_MODEL=${OLLAMA_EMBED_MODEL:-nomic-embed-text:v1.5}
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_COLLECTION=${QDRANT_COLLECTION:-adwya_docs}
+      - QDRANT_DISTANCE=${QDRANT_DISTANCE:-cosine}
+      - QDRANT_VECTOR_SIZE=${QDRANT_VECTOR_SIZE:-}
+      - QDRANT_API_KEY=${QDRANT_API_KEY}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+    depends_on:
+      - qdrant
+      - ollama
 
   dashboard:
     build: .
@@ -23,7 +34,15 @@ services:
     volumes:
       - ./data:/app/data
     environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-glm-ocr:q8_0}
+      - OLLAMA_VISION_MODEL=${OLLAMA_VISION_MODEL:-glm-ocr:q8_0}
+      - OLLAMA_EMBED_MODEL=${OLLAMA_EMBED_MODEL:-nomic-embed-text:v1.5}
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_COLLECTION=${QDRANT_COLLECTION:-adwya_docs}
+      - QDRANT_DISTANCE=${QDRANT_DISTANCE:-cosine}
+      - QDRANT_VECTOR_SIZE=${QDRANT_VECTOR_SIZE:-}
+      - QDRANT_API_KEY=${QDRANT_API_KEY}
     command: >
       streamlit run app/dashboard.py
       --server.port 8501
@@ -31,4 +50,37 @@ services:
       --server.headless true
     depends_on:
       - api
+      - qdrant
+      - ollama
     restart: unless-stopped
+
+  ui:
+    build: ./ui
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://api:8000
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  qdrant_storage:
+  ollama_data:
