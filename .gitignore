@@ -21,6 +21,15 @@ htmlcov/
 # Env files
 .env
 
+# Local tooling
+.claude/
+
+# Data artifacts
+data/
+*.db
+*.sqlite
+*.sqlite3
+
 # OS
 .DS_Store
 Thumbs.db
