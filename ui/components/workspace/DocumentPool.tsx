@@ -210,9 +210,15 @@ export function DocumentPool({ documents, onOpenDocument, onUpload }: DocumentPo
               <AlertTriangle className="mr-1.5 h-3.5 w-3.5" />
               Anomalies ({anomalyDocs.length})
             </Button>
-            <Button variant="outline" size="sm" className="text-xs opacity-50 cursor-not-allowed" disabled>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs"
+              disabled={isUploading}
+              onClick={() => fileInputRef.current?.click()}
+            >
               <Upload className="mr-1.5 h-3.5 w-3.5" />
-              Importer
+              {isUploading ? "Importation..." : "Importer"}
             </Button>
           </div>
         </div>
